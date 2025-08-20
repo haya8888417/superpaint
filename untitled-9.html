@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Painting App</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 110%;
+      width: 110%;
+    }
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .control-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    label {
+      font-size: 14px;
+    }
+    input, select, button {
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button {
+      background: linear-gradient(45deg, #007BFF, #00d4ff);
+      color: white;
+      transition: background 0.3s ease, transform 0.2s ease;
+      border: none;
+      border-radius: 25px;
+    }
+    button:hover {
+      background: linear-gradient(45deg, #0056b3, #00a9d6);
+      transform: scale(1.05);
+    }
+    button:active {
+      background: linear-gradient(45deg, #004494, #008ab3);
+    }
+    button[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    canvas {
+      border: 2px solid #333;
+      background-color: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin: 20px auto;
+    }
+    #message {
+      font-size: 16px;
+      color: #4caf50;
+      display: none;
+      margin-top: 10px;
+    }
+    .color-history {
+      display: flex;
+      gap: 5px;
+    }
+    .color-history div {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .color-history div.selected {
+      border: 2px solid #000;
+    }
+    .brush-preview {
+      width: 50px;
+      height: 50px;
+      border: 1px solid #ccc;
+      margin-left: 10px;
+      border-radius: 50%;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 300px;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .dark-mode {
+      background-color: #333;
+      color: #f0f0f0;
+    }
+    .dark-mode #controls {
+      background-color: #444;
+    }
+    .dark-mode canvas {
+      border-color: #888;
+    }
+    .dark-mode button {
+      background: linear-gradient(45deg, #0056b3, #00a9d6);
+    }
+    @media (max-width: 768px) {
+      #controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        width: 90%;
+        height: auto;
+      }
+      button {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+    .control-group {
+    flex-wrap: wrap;
+}
+  </style>
+</head>
+<body>
+    
+  <div id="controls">
+    <div class="control-group">
+      <label for="colorPicker">Color:</label>
+      <input type="color" id="colorPicker" value="#000000">
+    </div>
+    <div class="color-history">
+      <div id="color1" style="background-color: #000000;" class="selected">s</div>
+      <div id="color2" style="background-color: #ffffff;"></div>
+    </div>
+    <div class="control-group">
+      <label for="brushSize">Size: <span id="brushSizeValue">5</span></label>
+      <input type="range" id="brushSize" min="1" max="20" value="5">
+      <div class="brush-preview" id="brushPreview"></div>
+    </div>
+    <div class="control-group">
+      <label for="brushOpacity">Opacity: <span id="brushOpacityValue">100</span>%</label>
+      <input type="range" id="brushOpacity" min="0" max="100" value="100">
+    </div>
+    <div class="control-group">
+      <label for="brushShape">Brush:</label>
+      <select id="brushShape">
+        <option value="round">Round</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <button id="clearCanvas">Clear</button>
+      <button id="saveImage">Save</button>
+      <button id="undo" onclick="undo()" disabled>Undo</button>
+      <button id="redo" onclick="redo()" disabled>Redo</button>
+      <button id="toggleGrid">Grid</button>
+      <button id="eraseMode">Eraser</button>
+      <button id="darkMode">Dark Mode</button>
+      <button id="zoomIn">Zoom In</button>
+      <button id="zoomOut">Zoom Out</button>
+      <button id="fillBackground">Fill Background</button>
+      <button id="rotateCanvas">Rotate</button>
+      <button id="brightnessAdjust">Brightness</button>
+      <button id="saturationAdjust">Saturation</button>
+      <button id="invertColors">Invert Colors</button>
+      <button id="blurEffect">Blur</button>
+      <button id="sharpenEffect">Sharpen</button>
+      <select id="shapeSelector">
+            <option value="no-shape">no shape used for drawing</option>
+            <option value="square">Square</option>
+            <option value="circle">Circle</option>
+            <option value="star">Star</option>
+            <option value="line">Line</option>
+            <option value="diamond">Diamond</option>
+            <option value="triangle">Triangle</option>
+            <option value="pentagon">Pentagon</option>
+            <option value="hexagon">Hexagon</option>
+            <option value="octagon">Octagon</option>
+        </select>
+    </div>
+    <div class="control-group">
+      <label for="canvasWidth">Canvas Width:</label>
+      <input type="number" id="canvasWidth" value="800" min="200">
+      <label for="canvasHeight">Canvas Height:</label>
+      <input type="number" id="canvasHeight" value="400" min="200">
+      <button id="resizeCanvas">Resize</button>
+    </div>
+    <div id="controls" class="control-group" style="width: 100%; height: 10vh; border: none;">
+      <input type="file" name="file" id="file" accept="audio/*">
+      <p>Upload a music file or something to listen from your computer or phone while painting</p>
+      <audio id="filefill" controls></audio>
+  </div>
+  </div>
+  <canvas id="paintCanvas" width="800" height="400" ></canvas>
+
+  <div id="message">Image Saved!</div>
+
+  <!-- Clear Confirmation Modal -->
+  <div id="clearModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <p>Are you sure you want to clear the canvas?</p>
+      <button id="confirmClear">Yes</button>
+      <button id="cancelClear">No</button>
+    </div>
+  </div>
+<p>notes</p>
+<ol>
+<li>undo and redo doesnt work with shapes so if you want to undo something with shapes use eraser</li>
+<li>if you want to install a file of mp3 you can Convert the youtube video to mp3 using <a href="https://ezmp3.cc/" target="_blank">youtube converter to mp3</a></li>
+<li>if you do brightness, saturation, invertColors, blur or sharpen then you press the grid button or undo and redo buttons the image will be back to normal</li>
+</li>
+</ol>
+  <script>
+    const canvas = document.getElementById('paintCanvas');
+    const ctx = canvas.getContext('2d');
+    let painting = false;
+    let brushColor = '#000000';
+    let brushSize = 5;
+    let brushOpacity = 1;
+    let brushShape = 'round';
+    let isErasing = false;
+    let showGrid = false;
+    let paths = [];
+    let redoPaths = [];
+    let currentPath = [];
+    let darkMode = false;
+    let zoomLevel = 1;
+    const colorHistory = [document.getElementById('color1'), document.getElementById('color2')];
+  
+    // Brush preview
+    const brushPreview = document.getElementById('brushPreview');
+    function updateBrushPreview() {
+      brushPreview.style.backgroundColor = brushColor;
+      brushPreview.style.width = `${brushSize * 2}px`;
+      brushPreview.style.height = `${brushSize * 2}px`;
+    }
+    updateBrushPreview();
+  
+    // Event Listeners for controls
+    document.getElementById('colorPicker').addEventListener('input', (e) => {
+      brushColor = e.target.value;
+      isErasing = false;  // Disable eraser when a new color is picked
+      updateBrushPreview();
+    });
+  
+    document.getElementById('brushSize').addEventListener('input', (e) => {
+      brushSize = e.target.value;
+      document.getElementById('brushSizeValue').textContent = brushSize;
+      updateBrushPreview();
+    });
+  
+    document.getElementById('brushOpacity').addEventListener('input', (e) => {
+      brushOpacity = e.target.value / 100;
+      document.getElementById('brushOpacityValue').textContent = e.target.value;
+    });
+  
+    document.getElementById('brushShape').addEventListener('change', (e) => {
+      brushShape = e.target.value;
+    });
+  
+    // Canvas Drawing Functions
+    function startPosition(e) {
+      painting = true;
+      currentPath = [];
+      draw(e);
+    }
+  
+    function endPosition() {
+      painting = false;
+      paths.push([...currentPath]);
+      currentPath = [];
+      ctx.beginPath();
+      redoPaths = [];
+      toggleRedoButton(false);
+      toggleUndoButton(true);
+    }
+  
+    
+
+  
+    // Resize Canvas
+    function resizeCanvas(width, height) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvas.width = width;
+      canvas.height = height;
+      ctx.putImageData(imageData, 0, 0);
+    }
+  
+    document.getElementById('resizeCanvas').addEventListener('click', () => {
+      const width = parseInt(document.getElementById('canvasWidth').value);
+      const height = parseInt(document.getElementById('canvasHeight').value);
+      resizeCanvas(width, height);
+    });
+  
+    // Undo and Redo
+    document.getElementById('undo').addEventListener('click', () => {
+      if (paths.length > 0) {
+        redoPaths.push(paths.pop());
+        redraw();
+        toggleRedoButton(true);
+        if (paths.length === 0) toggleUndoButton(false);
+      }
+    });
+  
+    document.getElementById('redo').addEventListener('click', () => {
+      if (redoPaths.length > 0) {
+        paths.push(redoPaths.pop());
+        redraw();
+        toggleUndoButton(true);
+        if (redoPaths.length === 0) toggleRedoButton(false);
+      }
+    });
+  
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paths.forEach((path) => redrawPath(path));
+      if (showGrid) drawGrid();
+    }
+  
+    function redrawPath(path) {
+      ctx.beginPath();
+      path.forEach((point) => {
+        ctx.globalAlpha = point.opacity;
+        ctx.lineWidth = point.size;
+        ctx.lineCap = point.shape === 'round' ? 'round' : 'butt';
+        ctx.strokeStyle = point.erasing ? '#fff' : point.color;
+        ctx.lineTo(point.x, point.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y);
+      });
+    }
+  
+    function toggleUndoButton(enable) {
+      document.getElementById('undo').disabled = !enable;
+    }
+  
+    function toggleRedoButton(enable) {
+      document.getElementById('redo').disabled = !enable;
+    }
+    //ctrl+z and ctrl+y
+    document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+    // Ctrl+Z for Undo
+    if (paths.length > 0) {
+      redoPaths.push(paths.pop());
+      redraw();
+      toggleRedoButton(true);
+      if (paths.length === 0) toggleUndoButton(false);
+    }
+    event.preventDefault(); // Prevent default browser undo
+  } else if ((event.ctrlKey || event.metaKey) && (event.key === 'y' || (event.shiftKey && event.key === 'Z'))) {
+    // Ctrl+Y or Ctrl+Shift+Z for Redo
+    if (redoPaths.length > 0) {
+      paths.push(redoPaths.pop());
+      redraw();
+      toggleUndoButton(true);
+      if (redoPaths.length === 0) toggleRedoButton(false);
+    }
+    event.preventDefault(); // Prevent default browser redo
+  }
+});
+
+    // Eraser mode
+    document.getElementById('eraseMode').addEventListener('click', () => {
+      isErasing = !isErasing;
+      brushColor = isErasing ? '#fff' : brushColor;
+      updateBrushPreview();
+    });
+  
+    // Grid Toggle
+    document.getElementById('toggleGrid').addEventListener('click', () => {
+  showGrid = !showGrid;
+  redraw();
+});
+
+function drawGrid() {
+  if (showGrid) {
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 0.5; // Make the grid lines thinner
+    const step = 20;
+    for (let i = step; i < canvas.width; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, canvas.height);
+      ctx.stroke();
+    }
+    for (let i = step; i < canvas.height; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(canvas.width, i);
+      ctx.stroke();
+    }
+  }
+}
+    // Zoom In and Zoom Out
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      zoomLevel += 0.2;
+      applyZoom();
+    });
+  
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      zoomLevel = Math.max(zoomLevel - 0.2, 0.2); // Avoid negative or too small zoom levels
+      applyZoom();
+    });
+    // Apply Zoom
+    function applyZoom() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation before applying zoom
+  ctx.scale(zoomLevel, zoomLevel);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  redraw();  // Redraw existing paths
+  if (showGrid) drawGrid();  // Draw grid after paths
+}
+
+  
+    // Canvas event listeners for drawing
+    canvas.addEventListener('mousedown', startPosition);
+    canvas.addEventListener('mouseup', endPosition);
+    canvas.addEventListener('mousemove', draw);
+    
+    // Save Image
+    document.getElementById('saveImage').addEventListener('click', () => {
+      const dataURL = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = 'painting.png';
+      link.click();
+    });
+
+    // Dark Mode Toggle
+    document.getElementById('darkMode').addEventListener('click', () => {
+      darkMode = !darkMode;
+      document.body.classList.toggle('dark-mode', darkMode);
+    });
+
+    // Clear Confirmation Modal
+    document.getElementById('clearCanvas').addEventListener('click', () => {
+      document.getElementById('clearModal').style.display = 'block';
+    });
+
+    document.getElementById('confirmClear').addEventListener('click', () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  paths = [];
+  redoPaths = [];
+  toggleUndoButton(false);
+  toggleRedoButton(false);
+  document.getElementById('clearModal').style.display = 'none';
+  if (showGrid) drawGrid();  // Draw grid after clearing the canvas
+});
+
+
+    document.getElementById('cancelClear').addEventListener('click', () => {
+      document.getElementById('clearModal').style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+      if (event.target === document.getElementById('clearModal')) {
+        document.getElementById('clearModal').style.display = 'none';
+      }
+    });
+
+    // Dark Mode Styles
+    const darkModeStyles = `
+      body.dark-mode {
+        background-color: #333;
+        color: #ddd;
+      }
+      canvas {
+        border: 2px solid #666;
+      }
+      #controls {
+        background-color: #444;
+        border: 1px solid #555;
+      }
+      input, select, button {
+        background-color: #555;
+        color: #ddd;
+        border: 1px solid #666;
+      }
+      button {
+        background: linear-gradient(45deg, #0056b3, #0099ff);
+      }
+      .color-history div {
+        border: 1px solid #666;
+      }
+    `;
+
+    // Append Dark Mode Styles
+    const styleElement = document.createElement('style');
+    styleElement.textContent = darkModeStyles;
+    document.head.appendChild(styleElement);
+    document.getElementById('fillBackground').addEventListener('click', () => {
+  ctx.fillStyle = brushColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  paths = []; // Clears history after filling the background
+  redoPaths = [];
+  toggleUndoButton(false);
+  toggleRedoButton(false);
+});
+document.getElementById('rotateCanvas').addEventListener('click', () => {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.height;
+  tempCanvas.height = canvas.width;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // Rotate canvas by 90 degrees
+  tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+  tempCtx.rotate(Math.PI / 2);
+  tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+
+  // Update main canvas dimensions and draw rotated image
+  canvas.width = tempCanvas.width;
+  canvas.height = tempCanvas.height;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(tempCanvas, 0, 0);
+});
+// Brightness Adjust
+document.getElementById('brightnessAdjust').addEventListener('click', () => {
+  adjustBrightness(20); // Increase brightness by 20
+});
+
+function adjustBrightness(value) {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] += value;     // Red
+    data[i + 1] += value; // Green
+    data[i + 2] += value; // Blue
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// Saturation Adjust
+document.getElementById('saturationAdjust').addEventListener('click', () => {
+  adjustSaturation(20); // Increase saturation
+});
+
+function adjustSaturation(value) {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    let max = Math.max(data[i], data[i + 1], data[i + 2]);
+    data[i] += (max - data[i]) * (value / 100);
+    data[i + 1] += (max - data[i + 1]) * (value / 100);
+    data[i + 2] += (max - data[i + 2]) * (value / 100);
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// Invert Colors
+document.getElementById('invertColors').addEventListener('click', () => {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 255 - data[i];     // Red
+    data[i + 1] = 255 - data[i + 1]; // Green
+    data[i + 2] = 255 - data[i + 2]; // Blue
+  }
+  ctx.putImageData(imageData, 0, 0);
+});
+
+// Blur Effect
+document.getElementById('blurEffect').addEventListener('click', () => {
+  ctx.filter = 'blur(5px)';
+  ctx.drawImage(canvas, 0, 0);
+  ctx.filter = 'none';
+});
+
+// Sharpen Effect
+document.getElementById('sharpenEffect').addEventListener('click', () => {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  // Apply sharpening kernel to the image data (simplified version)
+  const sharpenKernel = [
+    0, -1,  0,
+   -1,  5, -1,
+    0, -1,  0
+  ];
+
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  tempCtx.putImageData(imageData, 0, 0);
+  
+  const tempData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+  const newData = new Uint8ClampedArray(tempData);
+
+  // Convolution operation (simplified)
+  for (let y = 1; y < canvas.height - 1; y++) {
+    for (let x = 1; x < canvas.width - 1; x++) {
+      const i = (y * canvas.width + x) * 4;
+      for (let j = 0; j < 3; j++) {  // Loop through RGB channels
+        newData[i + j] = (
+          tempData[i + j] * sharpenKernel[4] + 
+          tempData[i + j - 4] * sharpenKernel[3] + 
+          tempData[i + j + 4] * sharpenKernel[5] + 
+          tempData[i + j - canvas.width * 4] * sharpenKernel[1] + 
+          tempData[i + j + canvas.width * 4] * sharpenKernel[7]
+        );
+      }
+    }
+  }
+
+  const newImageData = new ImageData(newData, canvas.width, canvas.height);
+  ctx.putImageData(newImageData, 0, 0);
+});
+function draw(e) {
+  if (!painting) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / zoomLevel;
+  const y = (e.clientY - rect.top) / zoomLevel;
+
+  // Clear the path and start fresh
+  ctx.beginPath();
+
+  // Check if a shape is selected
+  const selectedShape = document.getElementById('shapeSelector').value;
+  if (selectedShape !== 'no-shape') {
+    drawShape(selectedShape, x, y);
+  } else {
+    ctx.globalAlpha = brushOpacity;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = brushShape === 'round' ? 'round' : 'butt';
+    ctx.strokeStyle = isErasing ? '#fff' : brushColor;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    currentPath.push({
+      x,
+      y,
+      color: brushColor,
+      size: brushSize,
+      opacity: brushOpacity,
+      shape: brushShape,
+      erasing: isErasing,
+    });
+  }
+}
+function drawShape(shape, x, y) {
+  const size = brushSize * 10; // Adjust size multiplier as needed
+
+  ctx.globalAlpha = brushOpacity;
+  ctx.fillStyle = isErasing ? '#fff' : brushColor;
+  ctx.strokeStyle = isErasing ? '#fff' : brushColor;
+
+  switch (shape) {
+    case 'square':
+      ctx.fillRect(x - size / 2, y - size / 2, size, size);
+      break;
+    case 'circle':
+      ctx.beginPath();
+      ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'star':
+      drawStar(ctx, x, y, 5, size / 2, size / 4);
+      break;
+    case 'line':
+      ctx.beginPath();
+      ctx.moveTo(x - size / 2, y);
+      ctx.lineTo(x + size / 2, y);
+      ctx.stroke();
+      break;
+    case 'diamond':
+      drawDiamond(ctx, x, y, size);
+      break;
+    case 'triangle':
+      drawTriangle(ctx, x, y, size);
+      break;
+    case 'pentagon':
+      drawPolygon(ctx, x, y, 5, size / 2);
+      break;
+    case 'hexagon':
+      drawPolygon(ctx, x, y, 6, size / 2);
+      break;
+    case 'octagon':
+      drawPolygon(ctx, x, y, 8, size / 2);
+      break;
+  }
+  function drawShape(type, x1, y1, x2, y2) {
+  const ctx = canvas.getContext('2d');
+  const width = x2 - x1;
+  const height = y2 - y1;
+  const cx = x1 + width / 2;
+  const cy = y1 + height / 2;
+
+  ctx.beginPath();
+
+  switch (type) {
+    case 'rectangle':
+    case 'right-rectangle':
+      ctx.rect(x1, y1, width, height);
+      break;
+
+    case 'square':
+      const size = Math.min(Math.abs(width), Math.abs(height));
+      ctx.rect(x1, y1, width < 0 ? -size : size, height < 0 ? -size : size);
+      break;
+
+    case 'rounded-rectangle':
+    case 'round-rectangle-callout':
+      const radius = 20;
+      ctx.moveTo(x1 + radius, y1);
+      ctx.lineTo(x1 + width - radius, y1);
+      ctx.quadraticCurveTo(x1 + width, y1, x1 + width, y1 + radius);
+      ctx.lineTo(x1 + width, y1 + height - radius);
+      ctx.quadraticCurveTo(x1 + width, y1 + height, x1 + width - radius, y1 + height);
+      ctx.lineTo(x1 + radius, y1 + height);
+      ctx.quadraticCurveTo(x1, y1 + height, x1, y1 + height - radius);
+      ctx.lineTo(x1, y1 + radius);
+      ctx.quadraticCurveTo(x1, y1, x1 + radius, y1);
+      break;
+
+    case 'rounded-square':
+      drawShape('rounded-rectangle', x1, y1, x1 + Math.min(width, height), y1 + Math.min(width, height));
+      return;
+
+    case 'oval':
+    case 'oval-callout':
+      ctx.ellipse(cx, cy, Math.abs(width) / 2, Math.abs(height) / 2, 0, 0, Math.PI * 2);
+      break;
+
+    case 'line':
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      break;
+
+    case 'diamond':
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x2, cy);
+      ctx.lineTo(cx, y2);
+      ctx.lineTo(x1, cy);
+      ctx.closePath();
+      break;
+
+    case 'triangle':
+      ctx.moveTo(cx, y1);
+      ctx.lineTo(x2, y2);
+      ctx.lineTo(x1, y2);
+      ctx.closePath();
+      break;
+
+    case 'five-point-star':
+      drawStar(ctx, cx, cy, 5, Math.min(width, height) / 2, Math.min(width, height) / 4);
+      return;
+
+    case 'four-point-star':
+      drawStar(ctx, cx, cy, 4, Math.min(width, height) / 2, Math.min(width, height) / 4);
+      return;
+
+    case 'six-point-star':
+      drawStar(ctx, cx, cy, 6, Math.min(width, height) / 2, Math.min(width, height) / 4);
+      return;
+
+    case 'pentagon':
+      drawPolygon(ctx, cx, cy, Math.min(width, height) / 2, 5);
+      return;
+
+    case 'hexagon':
+      drawPolygon(ctx, cx, cy, Math.min(width, height) / 2, 6);
+      return;
+
+    case 'octagon':
+      drawPolygon(ctx, cx, cy, Math.min(width, height) / 2, 8);
+      return;
+
+    case 'heart':
+      drawHeart(ctx, cx, cy, Math.min(width, height));
+      return;
+
+    case 'cloud':
+    case 'cloud-callout':
+      drawCloud(ctx, cx, cy, Math.min(width, height) / 2);
+      return;
+
+    default:
+      console.warn("Unknown shape: " + type);
+  }
+
+  ctx.stroke();
+}
+
+// Helper to draw stars
+function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = Math.PI / 2 * 3;
+  let x = cx;
+  let y = cy;
+  let step = Math.PI / spikes;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+// Helper to draw polygons
+function drawPolygon(ctx, cx, cy, radius, sides) {
+  const angle = (2 * Math.PI) / sides;
+  ctx.beginPath();
+  for (let i = 0; i <= sides; i++) {
+    const x = cx + radius * Math.cos(i * angle - Math.PI / 2);
+    const y = cy + radius * Math.sin(i * angle - Math.PI / 2);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+// Helper to draw heart
+function drawHeart(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + size / 4);
+  ctx.bezierCurveTo(x + size / 2, y - size / 2, x + size * 1.5, y + size / 2, x, y + size);
+  ctx.bezierCurveTo(x - size * 1.5, y + size / 2, x - size / 2, y - size / 2, x, y + size / 4);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+// Helper to draw cloud
+function drawCloud(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x - r / 2, y, r / 2, Math.PI * 0.5, Math.PI * 1.5);
+  ctx.arc(x, y - r / 1.5, r / 1.5, Math.PI, 0);
+  ctx.arc(x + r / 2, y, r / 2, Math.PI * 1.5, Math.PI * 0.5);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+}
+// Star Drawing Function
+function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Diamond Drawing Function
+function drawDiamond(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - size / 2); // Top point
+  ctx.lineTo(x + size / 2, y); // Right point
+  ctx.lineTo(x, y + size / 2); // Bottom point
+  ctx.lineTo(x - size / 2, y); // Left point
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Triangle Drawing Function
+function drawTriangle(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - size / 2); // Top point
+  ctx.lineTo(x + size / 2, y + size / 2); // Bottom right point
+  ctx.lineTo(x - size / 2, y + size / 2); // Bottom left point
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Polygon Drawing Function (for pentagon, hexagon, etc.)
+function drawPolygon(ctx, x, y, sides, radius) {
+  const angle = (Math.PI * 2) / sides;
+
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const dx = x + radius * Math.cos(angle * i);
+    const dy = y + radius * Math.sin(angle * i);
+    if (i === 0) ctx.moveTo(dx, dy);
+    else ctx.lineTo(dx, dy);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+document.getElementById("file").addEventListener("change", function(event){
+        var file = event.target.files[0];
+        if (file) {
+            var player = document.getElementById("filefill");
+            var objectURL = URL.createObjectURL(file);
+            player.src = objectURL;
+            player.play();
+        } else {
+            alert("No file selected or the file is not supported.");
+        }
+    });
+    </script>
+  </body>
+</html>
