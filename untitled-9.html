@@ -448,7 +448,11 @@ function drawGrid() {
     canvas.addEventListener('mousedown', startPosition);
     canvas.addEventListener('mouseup', endPosition);
     canvas.addEventListener('mousemove', draw);
-    
+    // Touch events
+canvas.addEventListener("touchstart", startPosition);
+canvas.addEventListener("touchend", endPosition);
+canvas.addEventListener("touchmove", draw);
+
     // Save Image
     document.getElementById('saveImage').addEventListener('click', () => {
       const dataURL = canvas.toDataURL('image/png');
@@ -951,4 +955,5 @@ document.getElementById("file").addEventListener("change", function(event){
     });
     </script>
   </body>
+
 </html>
